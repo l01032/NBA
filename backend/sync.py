@@ -36,7 +36,7 @@ import db  # noqa: E402
 load_dotenv()
 
 API_BASE = "https://api.balldontlie.io/v1"
-API_KEY = os.environ.get("BALLDONTLIE_API_KEY", "")
+API_KEY = os.environ.get("BALLDONTLIE_API_KEY", "").strip()
 SECONDS_BETWEEN_REQUESTS = 13  # 60s / 5 req = 12s; dejamos 13s de margen
 
 
