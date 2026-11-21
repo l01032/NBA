@@ -1,0 +1,44 @@
+name: Actualizar datos NBA
+
+# Corre solo, sin que prendas tu compu. GitHub Actions es gratis para esto
+# (los repos publicos tienen minutos ilimitados; los privados, 2000 min/mes
+# gratis - este trabajo tarda menos de 1 minuto, asi que sobra de sobra).
+on:
+  schedule:
+    # 09:00 UTC = 03:00 hora de Colombia (UTC-5). Ajusta la hora si quieres
+    # que corra en otro momento (son horas UTC, no locales).
+    - cron: "0 9 * * *"
+  workflow_dispatch: {}  # tambien te deja correrlo a mano desde la pestana "Actions" de GitHub
+
+permissions:
+  contents: write  # necesario para que el robot pueda subir el nba_local.db actualizado
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Traer los partidos nuevos
+        env:
+          BALLDONTLIE_API_KEY: ${{ secrets.BALLDONTLIE_API_KEY }}
+        run: |
+          cd backend
+          python sync.py update
+
+      - name: Subir nba_local.db si cambio
+        run: |
+          git config user.name "nba-stats-bot"
+          git config user.email "actions@github.com"
+          git add nba_local.db
+          git diff --staged --quiet || git commit -m "Actualizacion automatica de partidos"
+          git push
