@@ -20,6 +20,7 @@ load_dotenv()
 
 FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "frontend")
 PORT = int(os.environ.get("PORT", 5000))
+DEBUG = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
 
 app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path="")
 db.init_db()
@@ -89,4 +90,7 @@ def index():
 
 if __name__ == "__main__":
     print(f"Abre http://localhost:{PORT} en tu navegador")
-    app.run(port=PORT, debug=True)
+    # host="0.0.0.0" es necesario para que funcione cuando se publique en
+    # Render (o cualquier hosting); en tu compu local sigue abriendo igual
+    # en http://localhost:PORT.
+    app.run(host="0.0.0.0", port=PORT, debug=DEBUG)
