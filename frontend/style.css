@@ -143,6 +143,49 @@ main { max-width: 760px; margin: 0 auto; padding: 20px; }
 .badge-win { background: var(--win); }
 .badge-loss { background: var(--loss); }
 
+.expand-arrow {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-left: 2px;
+}
+
+.quarters-panel {
+  background: #10131a;
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  padding: 10px 14px;
+  margin-top: -2px;
+}
+
+.quarters-empty {
+  color: var(--muted);
+  font-size: 0.78rem;
+  padding: 4px 0;
+}
+
+.quarters-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.quarters-table th, .quarters-table td {
+  text-align: center;
+  padding: 4px 6px;
+  color: var(--text);
+}
+
+.quarters-table th {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.quarters-table td:first-child, .quarters-table th:first-child {
+  text-align: left;
+  color: var(--muted);
+}
+
 .loading, .no-more {
   text-align: center;
   color: var(--muted);

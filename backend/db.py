@@ -38,6 +38,13 @@ CREATE TABLE IF NOT EXISTS games (
     visitor_team_id INTEGER NOT NULL,
     home_team_score INTEGER,
     visitor_team_score INTEGER,
+    -- Marcador por cuarto: solo viene lleno para partidos de la temporada 2023
+    -- en adelante (as\u00ed lo entrega balldontlie en su plan gratuito). Para
+    -- partidos m\u00e1s viejos estos campos quedan en NULL.
+    home_q1 INTEGER, home_q2 INTEGER, home_q3 INTEGER, home_q4 INTEGER,
+    home_ot1 INTEGER, home_ot2 INTEGER, home_ot3 INTEGER,
+    visitor_q1 INTEGER, visitor_q2 INTEGER, visitor_q3 INTEGER, visitor_q4 INTEGER,
+    visitor_ot1 INTEGER, visitor_ot2 INTEGER, visitor_ot3 INTEGER,
     FOREIGN KEY (home_team_id) REFERENCES teams(id),
     FOREIGN KEY (visitor_team_id) REFERENCES teams(id)
 );
@@ -67,9 +74,28 @@ def get_conn():
         conn.close()
 
 
+QUARTER_COLUMNS = [
+    "home_q1", "home_q2", "home_q3", "home_q4", "home_ot1", "home_ot2", "home_ot3",
+    "visitor_q1", "visitor_q2", "visitor_q3", "visitor_q4", "visitor_ot1", "visitor_ot2", "visitor_ot3",
+]
+
+
 def init_db():
     with get_conn() as conn:
         conn.executescript(SCHEMA)
+        _migrate_add_quarter_columns(conn)
+
+
+def _migrate_add_quarter_columns(conn):
+    """
+    Si ya ten\u00edas una base de datos creada ANTES de que agreg\u00e1ramos el
+    marcador por cuarto, esto le agrega las columnas que falten sin borrar
+    nada de lo que ya hab\u00edas descargado.
+    """
+    existing = {row["name"] for row in conn.execute("PRAGMA table_info(games)")}
+    for col in QUARTER_COLUMNS:
+        if col not in existing:
+            conn.execute(f"ALTER TABLE games ADD COLUMN {col} INTEGER")
 
 
 def upsert_team(conn, t):
@@ -94,10 +120,14 @@ def upsert_game(conn, g):
         """
         INSERT INTO games (
             id, date, datetime, season, status, status_state, postseason,
-            home_team_id, visitor_team_id, home_team_score, visitor_team_score
+            home_team_id, visitor_team_id, home_team_score, visitor_team_score,
+            home_q1, home_q2, home_q3, home_q4, home_ot1, home_ot2, home_ot3,
+            visitor_q1, visitor_q2, visitor_q3, visitor_q4, visitor_ot1, visitor_ot2, visitor_ot3
         ) VALUES (
             :id, :date, :datetime, :season, :status, :status_state, :postseason,
-            :home_team_id, :visitor_team_id, :home_team_score, :visitor_team_score
+            :home_team_id, :visitor_team_id, :home_team_score, :visitor_team_score,
+            :home_q1, :home_q2, :home_q3, :home_q4, :home_ot1, :home_ot2, :home_ot3,
+            :visitor_q1, :visitor_q2, :visitor_q3, :visitor_q4, :visitor_ot1, :visitor_ot2, :visitor_ot3
         )
         ON CONFLICT(id) DO UPDATE SET
             date=excluded.date,
@@ -107,7 +137,13 @@ def upsert_game(conn, g):
             status_state=excluded.status_state,
             postseason=excluded.postseason,
             home_team_score=excluded.home_team_score,
-            visitor_team_score=excluded.visitor_team_score
+            visitor_team_score=excluded.visitor_team_score,
+            home_q1=excluded.home_q1, home_q2=excluded.home_q2,
+            home_q3=excluded.home_q3, home_q4=excluded.home_q4,
+            home_ot1=excluded.home_ot1, home_ot2=excluded.home_ot2, home_ot3=excluded.home_ot3,
+            visitor_q1=excluded.visitor_q1, visitor_q2=excluded.visitor_q2,
+            visitor_q3=excluded.visitor_q3, visitor_q4=excluded.visitor_q4,
+            visitor_ot1=excluded.visitor_ot1, visitor_ot2=excluded.visitor_ot2, visitor_ot3=excluded.visitor_ot3
         """,
         g,
     )
@@ -147,6 +183,8 @@ def list_team_games(conn, team_id, before_date=None, limit=15):
         SELECT
             g.id, g.date, g.season, g.status, g.status_state, g.postseason,
             g.home_team_id, g.visitor_team_id, g.home_team_score, g.visitor_team_score,
+            g.home_q1, g.home_q2, g.home_q3, g.home_q4, g.home_ot1, g.home_ot2, g.home_ot3,
+            g.visitor_q1, g.visitor_q2, g.visitor_q3, g.visitor_q4, g.visitor_ot1, g.visitor_ot2, g.visitor_ot3,
             ht.full_name AS home_full_name, ht.abbreviation AS home_abbr,
             vt.full_name AS visitor_full_name, vt.abbreviation AS visitor_abbr
         FROM games g

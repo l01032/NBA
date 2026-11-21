@@ -116,6 +116,14 @@ def _save_games_page(conn, games):
                 "visitor_team_id": g["visitor_team"]["id"],
                 "home_team_score": g.get("home_team_score"),
                 "visitor_team_score": g.get("visitor_team_score"),
+                # Marcador por cuarto: la API solo lo llena para temporada 2023 en
+                # adelante; para partidos m\u00e1s viejos vienen como None (NULL).
+                "home_q1": g.get("home_q1"), "home_q2": g.get("home_q2"),
+                "home_q3": g.get("home_q3"), "home_q4": g.get("home_q4"),
+                "home_ot1": g.get("home_ot1"), "home_ot2": g.get("home_ot2"), "home_ot3": g.get("home_ot3"),
+                "visitor_q1": g.get("visitor_q1"), "visitor_q2": g.get("visitor_q2"),
+                "visitor_q3": g.get("visitor_q3"), "visitor_q4": g.get("visitor_q4"),
+                "visitor_ot1": g.get("visitor_ot1"), "visitor_ot2": g.get("visitor_ot2"), "visitor_ot3": g.get("visitor_ot3"),
             },
         )
         saved += 1

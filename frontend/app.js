@@ -99,21 +99,55 @@ async function openTeam(team) {
   await loadMoreGames();
 }
 
+function quarterTableHTML(g) {
+  if (!g.has_quarters) {
+    return `<div class="quarters-empty">No hay desglose por cuarto para este partido (solo disponible desde la temporada 2023-24).</div>`;
+  }
+  const labels = ["T1", "T2", "T3", "T4"];
+  g.team_ot.forEach((_, i) => labels.push(`OT${i + 1}`));
+  const teamRow = [...g.team_quarters, ...g.team_ot];
+  const oppRow = [...g.opponent_quarters, ...g.opponent_ot];
+
+  const headerCells = labels.map((l) => `<th>${l}</th>`).join("");
+  const teamCells = teamRow.map((v) => `<td>${v ?? "-"}</td>`).join("");
+  const oppCells = oppRow.map((v) => `<td>${v ?? "-"}</td>`).join("");
+
+  return `
+    <table class="quarters-table">
+      <thead><tr><th></th>${headerCells}<th>F</th></tr></thead>
+      <tbody>
+        <tr><td>${g.is_home ? "Local" : "Visita"}</td>${teamCells}<td><b>${g.team_score}</b></td></tr>
+        <tr><td>${g.opponent_abbr}</td>${oppCells}<td><b>${g.opponent_score}</b></td></tr>
+      </tbody>
+    </table>
+  `;
+}
+
 function renderGame(g) {
   const row = document.createElement("div");
-  row.className = "game-row";
+  row.className = "game-row-wrap";
   const vs = g.is_home ? "vs" : "@";
   const resultClass = g.result === "W" ? "badge-win" : g.result === "L" ? "badge-loss" : "";
+
   row.innerHTML = `
-    <div class="game-left">
-      <span class="game-date">${g.date}${g.postseason ? " · Playoffs" : ""}</span>
-      <span class="game-opp">${vs} ${g.opponent_abbr} — ${g.opponent_name}</span>
+    <div class="game-row" role="button" tabindex="0">
+      <div class="game-left">
+        <span class="game-date">${g.date}${g.postseason ? " · Playoffs" : ""}</span>
+        <span class="game-opp">${vs} ${g.opponent_abbr} — ${g.opponent_name}</span>
+      </div>
+      <div class="game-right">
+        <span class="game-score">${g.team_score ?? "-"} : ${g.opponent_score ?? "-"}</span>
+        ${g.result ? `<span class="badge-result ${resultClass}">${g.result}</span>` : ""}
+        <span class="expand-arrow">▾</span>
+      </div>
     </div>
-    <div class="game-right">
-      <span class="game-score">${g.team_score ?? "-"} : ${g.opponent_score ?? "-"}</span>
-      ${g.result ? `<span class="badge-result ${resultClass}">${g.result}</span>` : ""}
-    </div>
+    <div class="quarters-panel hidden">${quarterTableHTML(g)}</div>
   `;
+
+  const header = row.querySelector(".game-row");
+  const panel = row.querySelector(".quarters-panel");
+  header.addEventListener("click", () => panel.classList.toggle("hidden"));
+
   gamesList.appendChild(row);
 }
 

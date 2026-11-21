@@ -35,6 +35,16 @@ def row_to_game_dict(g, team_id):
     result = None
     if team_score is not None and opp_score is not None:
         result = "W" if team_score > opp_score else ("L" if team_score < opp_score else "T")
+
+    my_prefix = "home" if is_home else "visitor"
+    opp_prefix = "visitor" if is_home else "home"
+    # Cuartos: None para partidos viejos (antes de 2023) o si la API no los mando.
+    team_quarters = [g[f"{my_prefix}_q{i}"] for i in (1, 2, 3, 4)]
+    opponent_quarters = [g[f"{opp_prefix}_q{i}"] for i in (1, 2, 3, 4)]
+    team_ot = [g[f"{my_prefix}_ot{i}"] for i in (1, 2, 3) if g[f"{my_prefix}_ot{i}"] is not None]
+    opponent_ot = [g[f"{opp_prefix}_ot{i}"] for i in (1, 2, 3) if g[f"{opp_prefix}_ot{i}"] is not None]
+    has_quarters = any(q is not None for q in team_quarters)
+
     return {
         "id": g["id"],
         "date": g["date"],
@@ -46,6 +56,11 @@ def row_to_game_dict(g, team_id):
         "team_score": team_score,
         "opponent_score": opp_score,
         "result": result,
+        "has_quarters": has_quarters,
+        "team_quarters": team_quarters if has_quarters else None,
+        "opponent_quarters": opponent_quarters if has_quarters else None,
+        "team_ot": team_ot if has_quarters else None,
+        "opponent_ot": opponent_ot if has_quarters else None,
     }
 
 
