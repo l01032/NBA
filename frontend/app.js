@@ -62,6 +62,59 @@ async function loadSyncStatus() {
   }
 }
 
+// Orden de las secciones en la pantalla principal (cambia el orden aquí si quieres otro)
+const CONFERENCE_ORDER = ["West", "East"];
+const DIVISION_ORDER = ["Pacific", "Southwest", "Northwest", "Atlantic", "Central", "Southeast"];
+// Prioridad: primero la conferencia Oeste y luego la Este, y dentro de cada una sus divisiones
+const SORT_BY_CONFERENCE_FIRST = true;
+const LABEL_SEPARATOR = " · ";
+
+function orderIndex(list, text) {
+  const i = list.findIndex((x) => (text || "").includes(x));
+  return i === -1 ? 99 : i;
+}
+
+function divisionLabel(t) {
+  const conf = t.conference || "";
+  const div = t.division || "Otros equipos";
+  return conf && !div.includes(conf) ? `${conf}${LABEL_SEPARATOR}${div}` : div;
+}
+
+function compareTeams(a, b) {
+  const aDiv = orderIndex(DIVISION_ORDER, a.division);
+  const bDiv = orderIndex(DIVISION_ORDER, b.division);
+  const aConf = orderIndex(CONFERENCE_ORDER, a.conference || a.division);
+  const bConf = orderIndex(CONFERENCE_ORDER, b.conference || b.division);
+  const first = SORT_BY_CONFERENCE_FIRST ? [aConf - bConf, aDiv - bDiv] : [aDiv - bDiv, aConf - bConf];
+  return first[0] || first[1] || divisionLabel(a).localeCompare(divisionLabel(b)) ||
+    String(a.full_name).localeCompare(String(b.full_name));
+}
+
+function buildTeamCard(t) {
+  const [primary, secondary] = colorsFor(t.abbreviation);
+  const card = document.createElement("div");
+  card.className = "team-card";
+  card.style.setProperty("--team-primary", primary);
+  card.style.setProperty("--team-secondary", secondary);
+  card.onclick = () => openTeam(t);
+  card.innerHTML = `
+    <div class="team-badge">
+      <img src="${logoFor(t.abbreviation)}" alt="${t.abbreviation}" loading="lazy">
+    </div>
+    <div class="team-name">${t.full_name}</div>
+  `;
+
+  // Si el logo no carga, se muestra la abreviatura como respaldo
+  const img = card.querySelector(".team-badge img");
+  img.addEventListener("error", () => {
+    const span = document.createElement("span");
+    span.className = "team-badge-abbr";
+    span.textContent = t.abbreviation;
+    img.replaceWith(span);
+  });
+  return card;
+}
+
 async function loadTeams() {
   const res = await fetch("/api/teams");
   const teams = await res.json();
@@ -69,31 +122,28 @@ async function loadTeams() {
     teamGrid.innerHTML = `<p>No hay equipos guardados todavía. Corre <code>python sync.py teams</code> primero.</p>`;
     return;
   }
-  teamGrid.innerHTML = "";
-  teams.forEach((t) => {
-    const [primary, secondary] = colorsFor(t.abbreviation);
-    const card = document.createElement("div");
-    card.className = "team-card";
-    card.style.setProperty("--team-primary", primary);
-    card.style.setProperty("--team-secondary", secondary);
-    card.onclick = () => openTeam(t);
-    card.innerHTML = `
-      <div class="team-badge">
-        <img src="${logoFor(t.abbreviation)}" alt="${t.abbreviation}" loading="lazy">
-      </div>
-      <div class="team-name">${t.full_name}</div>
-      <div class="team-conf">${t.conference ?? ""} ${t.division ? "· " + t.division : ""}</div>
-    `;
-    // Si el logo no carga, se muestra la abreviatura como respaldo
-    const img = card.querySelector(".team-badge img");
-    img.addEventListener("error", () => {
-      const span = document.createElement("span");
-      span.className = "team-badge-abbr";
-      span.textContent = t.abbreviation;
-      img.replaceWith(span);
-    });
 
-    teamGrid.appendChild(card);
+  // El contenedor principal ahora apila secciones; cada sección tiene su propia cuadrícula
+  teamGrid.classList.remove("team-grid");
+  teamGrid.classList.add("division-list");
+  teamGrid.innerHTML = "";
+
+  const sections = new Map();
+  [...teams].sort(compareTeams).forEach((t) => {
+    const label = divisionLabel(t);
+    if (!sections.has(label)) {
+      const section = document.createElement("section");
+      section.className = "division";
+      const title = document.createElement("h2");
+      title.className = "division-title";
+      title.textContent = label;
+      const grid = document.createElement("div");
+      grid.className = "team-grid";
+      section.append(title, grid);
+      teamGrid.appendChild(section);
+      sections.set(label, grid);
+    }
+    sections.get(label).appendChild(buildTeamCard(t));
   });
 }
 
