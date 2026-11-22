@@ -17,6 +17,17 @@ function colorsFor(abbr) {
   return TEAM_COLORS[abbr] || ["#f0a500", "#1a1a1a"];
 }
 
+// Logos locales: carpeta "logos" junto a este archivo (un PNG por equipo, nombre = abreviatura).
+// Si tu servidor sirve los archivos desde /static, cambia LOGO_DIR a "/static/logos".
+const LOGO_DIR = "logos";
+// Abreviaturas alternativas que puede mandar la API -> nombre real del archivo
+const LOGO_ALIASES = { NY: "NYK", GS: "GSW", SA: "SAS", NO: "NOP", UTAH: "UTA", WSH: "WAS", PHO: "PHX", BRK: "BKN", CHO: "CHA", NJN: "BKN" };
+
+function logoFor(abbr) {
+  if (!abbr) return "";
+  return `${LOGO_DIR}/${LOGO_ALIASES[abbr] || abbr}.png`;
+}
+
 let currentTeam = null;
 let nextBefore = null;
 let hasMore = true;
@@ -68,11 +79,20 @@ async function loadTeams() {
     card.onclick = () => openTeam(t);
     card.innerHTML = `
       <div class="team-badge">
-        <span class="team-badge-abbr">${t.abbreviation}</span>
+        <img src="${logoFor(t.abbreviation)}" alt="${t.abbreviation}" loading="lazy">
       </div>
       <div class="team-name">${t.full_name}</div>
       <div class="team-conf">${t.conference ?? ""} ${t.division ? "· " + t.division : ""}</div>
     `;
+    // Si el logo no carga, se muestra la abreviatura como respaldo
+    const img = card.querySelector(".team-badge img");
+    img.addEventListener("error", () => {
+      const span = document.createElement("span");
+      span.className = "team-badge-abbr";
+      span.textContent = t.abbreviation;
+      img.replaceWith(span);
+    });
+
     teamGrid.appendChild(card);
   });
 }
@@ -89,7 +109,15 @@ async function openTeam(team) {
   hasMore = true;
   gamesList.innerHTML = "";
   noMoreEl.classList.add("hidden");
-  teamTitle.textContent = team.full_name;
+  // Título con el logo del equipo
+  teamTitle.textContent = "";
+  const titleLogo = document.createElement("img");
+  titleLogo.className = "title-logo";
+  titleLogo.src = logoFor(team.abbreviation);
+  titleLogo.alt = team.abbreviation;
+  titleLogo.addEventListener("error", () => titleLogo.remove());
+  teamTitle.appendChild(titleLogo);
+  teamTitle.appendChild(document.createTextNode(team.full_name));
   const [primary, secondary] = colorsFor(team.abbreviation);
   teamGamesView.style.setProperty("--team-primary", primary);
   teamGamesView.style.setProperty("--team-secondary", secondary);
@@ -133,7 +161,10 @@ function renderGame(g) {
     <div class="game-row" role="button" tabindex="0">
       <div class="game-left">
         <span class="game-date">${g.date}${g.postseason ? " · Playoffs" : ""}</span>
-        <span class="game-opp">${vs} ${g.opponent_abbr} — ${g.opponent_name}</span>
+        <span class="game-opp">
+          <img class="opp-logo" src="${logoFor(g.opponent_abbr)}" alt="" loading="lazy">
+          <span>${vs} ${g.opponent_abbr} — ${g.opponent_name}</span>
+        </span>
       </div>
       <div class="game-right">
         <span class="game-score">${g.team_score ?? "-"} : ${g.opponent_score ?? "-"}</span>
@@ -143,6 +174,10 @@ function renderGame(g) {
     </div>
     <div class="quarters-panel hidden">${quarterTableHTML(g)}</div>
   `;
+
+  // Si el logo del rival no carga, simplemente se oculta
+  const oppLogo = row.querySelector(".opp-logo");
+  oppLogo.addEventListener("error", () => oppLogo.remove());
 
   const header = row.querySelector(".game-row");
   const panel = row.querySelector(".quarters-panel");
